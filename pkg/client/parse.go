@@ -173,7 +173,14 @@ func getEndTime(startTime time.Time, durationSeconds string) (endTime time.Time,
 }
 
 func convertToTags(tagString string) (tags []fern.Tag) {
+	// strings.Split("", ",") yields [""] - an empty tag name the fern server
+	// rejects with a 500 ("tag name cannot be empty"), which fails the whole
+	// run ingest for callers that pass no -t at all. Skip empty segments.
 	for _, tag := range strings.Split(tagString, ",") {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
 		tags = append(tags, fern.Tag{Name: tag})
 	}
 	return
