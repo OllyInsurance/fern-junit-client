@@ -5,15 +5,17 @@ import (
 )
 
 type TestRun struct {
-	ID            uint64     `json:"id"`
-	TestProjectID string     `json:"test_project_id"`
-	TestSeed      uint64     `json:"test_seed"`
-	StartTime     time.Time  `json:"start_time"`
-	EndTime       time.Time  `json:"end_time"`
-	GitBranch     string     `json:"git_branch,omitempty"`
-	GitSha        string     `json:"git_sha,omitempty"`
-	Environment   string     `json:"environment,omitempty"`
-	SuiteRuns     []SuiteRun `json:"suite_runs"`
+	ID            uint64            `json:"id"`
+	TestProjectID string            `json:"test_project_id"`
+	TestSeed      uint64            `json:"test_seed"`
+	StartTime     time.Time         `json:"start_time"`
+	EndTime       time.Time         `json:"end_time"`
+	GitBranch     string            `json:"git_branch,omitempty"`
+	GitSha        string            `json:"git_sha,omitempty"`
+	Environment   string            `json:"environment,omitempty"`
+	BuildUrl      string            `json:"build_url,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
+	SuiteRuns     []SuiteRun        `json:"suite_runs"`
 }
 
 type SuiteRun struct {
