@@ -141,6 +141,13 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 			status = "passed"
 		}
 
+		// A case that carries its own start (parallel subtests, concurrent
+		// workers) keeps it; otherwise it follows the previous case.
+		if testCase.Timestamp != "" {
+			if ts, perr := time.Parse(time.RFC3339Nano, testCase.Timestamp); perr == nil {
+				startTime = ts
+			}
+		}
 		endTime, err = getEndTime(startTime, testCase.Time)
 		if err != nil {
 			err = fmt.Errorf("failed to calculate test end time: %w", err)
