@@ -311,3 +311,32 @@ func Test_convertToTags(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseTestSuite_TestCaseTimestamps(t *testing.T) {
+	suite := junit.TestSuite{
+		Name:      "pkg",
+		Timestamp: "2026-09-29T08:00:00Z",
+		Time:      "10",
+		TestCases: []junit.TestCase{
+			{Name: "TestA", Time: "4", Timestamp: "2026-09-29T08:00:01.5Z"},
+			{Name: "TestB", Time: "2", Timestamp: "2026-09-29T08:00:01.5Z"}, // ran alongside TestA
+			{Name: "TestC", Time: "1"},                                      // no timestamp: follows TestB
+		},
+	}
+	got, err := parseTestSuite(suite, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := func(s string) time.Time { v, _ := time.Parse(time.RFC3339Nano, s); return v }
+	want := []struct{ start, end time.Time }{
+		{at("2026-09-29T08:00:01.5Z"), at("2026-09-29T08:00:05.5Z")},
+		{at("2026-09-29T08:00:01.5Z"), at("2026-09-29T08:00:03.5Z")},
+		{at("2026-09-29T08:00:03.5Z"), at("2026-09-29T08:00:04.5Z")},
+	}
+	for i, w := range want {
+		s := got.SpecRuns[i]
+		if !s.StartTime.Equal(w.start) || !s.EndTime.Equal(w.end) {
+			t.Errorf("spec %d (%s): got %s..%s, want %s..%s", i, s.SpecDescription, s.StartTime, s.EndTime, w.start, w.end)
+		}
+	}
+}
