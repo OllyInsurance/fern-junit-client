@@ -20,7 +20,10 @@ type SendOptions struct {
 	Branch      string
 	CommitSha   string
 	Environment string
-	Verbose     bool
+	// BuildURL and Metadata tie the run to the CI job that produced it.
+	BuildURL string
+	Metadata map[string]string
+	Verbose  bool
 }
 
 // SendReports parses JUnit XML reports and posts a TestRun to Fern Platform.
@@ -31,6 +34,10 @@ func SendReports(opts SendOptions) error {
 	testRun.GitBranch = opts.Branch
 	testRun.GitSha = opts.CommitSha
 	testRun.Environment = opts.Environment
+	testRun.BuildUrl = opts.BuildURL
+	if len(opts.Metadata) > 0 {
+		testRun.Metadata = opts.Metadata
+	}
 
 	log.Default().Println("Parsing reports...")
 	if err := parseReports(&testRun, opts.FilePattern, opts.Tags, opts.Verbose); err != nil {
