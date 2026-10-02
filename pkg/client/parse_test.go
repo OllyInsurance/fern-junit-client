@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"reflect"
 	"strings"
@@ -388,5 +389,65 @@ func Test_skipReason(t *testing.T) {
 	got := skipReason(junit.Skip{Message: long})
 	if len(got) > maxSkipReason || !utf8.ValidString(got) {
 		t.Errorf("long reason: %d bytes, valid %v", len(got), utf8.ValidString(got))
+	}
+}
+
+func TestParseStepsProperty(t *testing.T) {
+	xmlDoc := `<testsuites><testsuite name="pkg" timestamp="2026-10-02T10:00:00Z" time="3">
+	<testcase classname="pkg" name="TestA" time="2" timestamp="2026-10-02T10:00:01Z">
+	  <properties><property name="other" value="x"/><property name="fern.cases" value='["TC-465-06a"]'/><property name="fern.steps" value='[{"title":"member PTY-1 policy POL-2","kind":"log","mode":"technical","start":"2026-10-02T10:00:01.5Z","duration_ms":null,"status":null,"error":null,"depth":0,"detail":"a_test.go:12"},{"title":"S01 works","kind":"subtest","mode":"technical","start":"2026-10-02T10:00:02Z","duration_ms":300,"status":"passed","error":null,"depth":0,"detail":null}]'/></properties>
+	</testcase>
+	<testcase classname="pkg" name="TestB" time="1"><properties><property name="fern.steps">[{"title":"open","kind":"step","mode":"plain","depth":0}]</property></properties></testcase>
+	<testcase classname="pkg" name="TestC" time="1"><properties><property name="fern.steps" value="not json"/></properties></testcase>
+	<testcase classname="pkg" name="TestD" time="1"/>
+	</testsuite></testsuites>`
+	var suites junit.TestSuites
+	if err := xml.Unmarshal([]byte(xmlDoc), &suites); err != nil {
+		t.Fatal(err)
+	}
+	run, err := parseTestSuite(suites.TestSuites[0], "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	specs := run.SpecRuns
+	steps, ok := specs[0].Metadata["steps"].([]interface{})
+	if !ok || len(steps) != 2 {
+		t.Fatalf("TestA steps = %#v", specs[0].Metadata)
+	}
+	if s := steps[1].(map[string]interface{}); s["kind"] != "subtest" || s["duration_ms"].(float64) != 300 {
+		t.Fatalf("TestA step 2 = %v", s)
+	}
+	if cs, _ := specs[0].Metadata["cases"].([]interface{}); len(cs) != 1 || cs[0] != "TC-465-06a" || len(specs[0].Metadata) != 2 {
+		t.Fatalf("TestA cases = %#v (only fern.* properties are metadata)", specs[0].Metadata)
+	}
+	if steps, _ := specs[1].Metadata["steps"].([]interface{}); len(steps) != 1 {
+		t.Fatalf("TestB (steps in the element body) = %#v", specs[1].Metadata)
+	}
+	if specs[2].Metadata != nil || specs[3].Metadata != nil {
+		t.Fatalf("bad or no steps must send no metadata: %#v %#v", specs[2].Metadata, specs[3].Metadata)
+	}
+}
+
+func TestParseStepsCaps(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("[")
+	for i := 0; i < 800; i++ {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		b.WriteString(`{"title":"log","kind":"log","depth":0}`)
+	}
+	b.WriteString("]")
+	steps := parseSteps([]junit.Property{{Name: "fern.steps", Value: b.String()}})
+	if len(steps) != maxSteps {
+		t.Fatalf("%d steps, want %d", len(steps), maxSteps)
+	}
+	if last := steps[len(steps)-1].(map[string]interface{}); last["title"] != "301 more steps not shown" {
+		t.Fatalf("last step %v", last)
+	}
+	big := `[` + strings.Repeat(`{"title":"`+strings.Repeat("x", 3000)+`","kind":"log"},`, 40) + `{"title":"end","kind":"log"}]`
+	steps = parseSteps([]junit.Property{{Name: "fern.steps", Value: big}})
+	if raw, _ := json.Marshal(steps); len(raw) > maxStepBytes {
+		t.Fatalf("byte cap: %d", len(raw))
 	}
 }

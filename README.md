@@ -128,6 +128,24 @@ Use the `--verbose` flag to see OAuth authentication status:
 fern-junit-client send -u "http://localhost:8080" -p "77b34e74-5631-5a71-b8ce-97b9d6bab10a" -f "report.xml" --verbose
 ```
 
+## Test steps
+
+A testcase may carry its steps (what the test did, in order) as a property:
+
+```xml
+<testcase name="TestA" time="2.1">
+  <properties>
+    <property name="fern.steps" value='[{"title":"member PTY-1","kind":"log","mode":"technical","start":"2026-10-02T10:00:01Z","duration_ms":null,"status":null,"error":null,"depth":0,"detail":"a_test.go:12"}]'/>
+  </properties>
+</testcase>
+```
+
+The client sends them as the spec run's `metadata.steps`, capped at 500 steps
+and 64 KB per test (the first steps are kept; a last step says how many were
+cut). A value that is not a JSON list is dropped. Any other `fern.<key>`
+property becomes `metadata.<key>` (its JSON value, else its text): olly sends
+`fern.cases`, the test case ids a test implements.
+
 ## See Also
 
 * [Fern UI](https://github.com/guidewire-oss/fern-ui)

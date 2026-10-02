@@ -12,12 +12,12 @@ import (
 
 // Test constants
 const (
-	testClientID       = "test-client"
-	testClientSecret   = "test-secret"
-	testTokenURL       = "https://auth.example.com/token"
-	testAccessToken    = "test-access-token"
-	testBearerToken    = "test-bearer-token"
-	testScopes         = "read write admin"
+	testClientID     = "test-client"
+	testClientSecret = "test-secret"
+	testTokenURL     = "https://auth.example.com/token"
+	testAccessToken  = "test-access-token"
+	testBearerToken  = "test-bearer-token"
+	testScopes       = "read write admin"
 )
 
 // Helper function to save and restore environment variables
@@ -45,7 +45,6 @@ func setOAuthEnv(tokenURL, clientID, clientPassword, scopes string) {
 	os.Setenv("FERN_AUTH_CLIENT_SECRET", clientPassword)
 	os.Setenv("FERN_CLIENT_SCOPE", scopes)
 }
-
 
 // Helper function to create a mock OAuth server with standard response
 func createMockOAuthServer(t *testing.T, token string, expiresIn int) *httptest.Server {
@@ -132,10 +131,10 @@ func TestNewOAuthClient(t *testing.T) {
 				errorContains:  "FERN_AUTH_CLIENT_SECRET",
 			},
 			{
-				name:      "all vars empty",
-				tokenURL:  "",
-				clientID:  "",
-				expectNil: true,
+				name:        "all vars empty",
+				tokenURL:    "",
+				clientID:    "",
+				expectNil:   true,
 				expectError: false,
 			},
 		}
