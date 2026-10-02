@@ -395,7 +395,7 @@ func Test_skipReason(t *testing.T) {
 func TestParseStepsProperty(t *testing.T) {
 	xmlDoc := `<testsuites><testsuite name="pkg" timestamp="2026-10-02T10:00:00Z" time="3">
 	<testcase classname="pkg" name="TestA" time="2" timestamp="2026-10-02T10:00:01Z">
-	  <properties><property name="other" value="x"/><property name="fern.steps" value='[{"title":"member PTY-1 policy POL-2","kind":"log","mode":"technical","start":"2026-10-02T10:00:01.5Z","duration_ms":null,"status":null,"error":null,"depth":0,"detail":"a_test.go:12"},{"title":"S01 works","kind":"subtest","mode":"technical","start":"2026-10-02T10:00:02Z","duration_ms":300,"status":"passed","error":null,"depth":0,"detail":null}]'/></properties>
+	  <properties><property name="other" value="x"/><property name="fern.cases" value='["TC-465-06a"]'/><property name="fern.steps" value='[{"title":"member PTY-1 policy POL-2","kind":"log","mode":"technical","start":"2026-10-02T10:00:01.5Z","duration_ms":null,"status":null,"error":null,"depth":0,"detail":"a_test.go:12"},{"title":"S01 works","kind":"subtest","mode":"technical","start":"2026-10-02T10:00:02Z","duration_ms":300,"status":"passed","error":null,"depth":0,"detail":null}]'/></properties>
 	</testcase>
 	<testcase classname="pkg" name="TestB" time="1"><properties><property name="fern.steps">[{"title":"open","kind":"step","mode":"plain","depth":0}]</property></properties></testcase>
 	<testcase classname="pkg" name="TestC" time="1"><properties><property name="fern.steps" value="not json"/></properties></testcase>
@@ -416,6 +416,9 @@ func TestParseStepsProperty(t *testing.T) {
 	}
 	if s := steps[1].(map[string]interface{}); s["kind"] != "subtest" || s["duration_ms"].(float64) != 300 {
 		t.Fatalf("TestA step 2 = %v", s)
+	}
+	if cs, _ := specs[0].Metadata["cases"].([]interface{}); len(cs) != 1 || cs[0] != "TC-465-06a" || len(specs[0].Metadata) != 2 {
+		t.Fatalf("TestA cases = %#v (only fern.* properties are metadata)", specs[0].Metadata)
 	}
 	if steps, _ := specs[1].Metadata["steps"].([]interface{}); len(steps) != 1 {
 		t.Fatalf("TestB (steps in the element body) = %#v", specs[1].Metadata)

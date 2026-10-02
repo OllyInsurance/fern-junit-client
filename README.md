@@ -142,7 +142,9 @@ A testcase may carry its steps (what the test did, in order) as a property:
 
 The client sends them as the spec run's `metadata.steps`, capped at 500 steps
 and 64 KB per test (the first steps are kept; a last step says how many were
-cut). A value that is not a JSON list is dropped.
+cut). A value that is not a JSON list is dropped. Any other `fern.<key>`
+property becomes `metadata.<key>` (its JSON value, else its text): olly sends
+`fern.cases`, the test case ids a test implements.
 
 ## See Also
 

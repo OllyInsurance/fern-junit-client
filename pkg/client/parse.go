@@ -168,9 +168,8 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 			StartTime:       startTime,
 			EndTime:         endTime,
 		}
-		if steps := parseSteps(testCase.Properties); steps != nil {
-			specRun.Metadata = map[string]interface{}{"steps": steps}
-		} else if verbose && hasProperty(testCase.Properties, stepsProperty) {
+		specRun.Metadata = caseMetadata(testCase.Properties)
+		if verbose && hasProperty(testCase.Properties, stepsProperty) && specRun.Metadata["steps"] == nil {
 			log.Default().Printf("TestCase %s: %s is not a JSON list; steps dropped\n", testCase.Name, stepsProperty)
 		}
 		suiteRun.SpecRuns = append(suiteRun.SpecRuns, specRun)
@@ -285,4 +284,37 @@ func parseSteps(props []junit.Property) []interface{} {
 		return kept
 	}
 	return nil
+}
+
+// caseMetadata is the spec run metadata a testcase carries as fern.<key>
+// properties: fern.steps (see parseSteps), fern.cases (the test case ids it
+// implements), and any other fern.<key> (its JSON value, else its text). nil
+// when there are none.
+func caseMetadata(props []junit.Property) map[string]interface{} {
+	var md map[string]interface{}
+	for _, p := range props {
+		key, ok := strings.CutPrefix(p.Name, "fern.")
+		if !ok || key == "" {
+			continue
+		}
+		raw := p.Value
+		if strings.TrimSpace(raw) == "" {
+			raw = p.Content
+		}
+		var v interface{}
+		if key == "steps" {
+			steps := parseSteps([]junit.Property{p})
+			if steps == nil {
+				continue
+			}
+			v = steps
+		} else if err := json.Unmarshal([]byte(raw), &v); err != nil {
+			v = raw
+		}
+		if md == nil {
+			md = map[string]interface{}{}
+		}
+		md[key] = v
+	}
+	return md
 }
