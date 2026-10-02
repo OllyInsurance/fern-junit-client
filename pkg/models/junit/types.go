@@ -34,6 +34,16 @@ type TestCase struct {
 	Failures  []Failure `xml:"failure"`
 	Errors    []Error   `xml:"error"`
 	Skips     []Skip    `xml:"skipped"`
+	// Properties are the case's own <properties> (pytest record_property,
+	// junit-stamp.py). "fern.steps" carries the case's steps as JSON.
+	Properties []Property `xml:"properties>property"`
+}
+
+type Property struct {
+	Name  string `xml:"name,attr"`
+	Value string `xml:"value,attr"`
+	// Content is the value when it is the element's body instead.
+	Content string `xml:",chardata"`
 }
 
 type Failure struct {

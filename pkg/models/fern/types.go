@@ -35,10 +35,13 @@ type SpecRun struct {
 	Message         string `json:"message"`
 	// Description is kept by Fern for every status (message only for
 	// failures), so a skip's reason travels here.
-	Description string    `json:"description,omitempty"`
-	Tags        []Tag     `json:"tags"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
+	Description string `json:"description,omitempty"`
+	// Metadata is per-test detail Fern stores on the spec run; "steps" is
+	// what the test did, in order (see parseSteps).
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Tags      []Tag                  `json:"tags"`
+	StartTime time.Time              `json:"start_time"`
+	EndTime   time.Time              `json:"end_time"`
 }
 
 type Tag struct {

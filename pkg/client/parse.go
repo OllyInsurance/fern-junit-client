@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -167,6 +168,11 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 			StartTime:       startTime,
 			EndTime:         endTime,
 		}
+		if steps := parseSteps(testCase.Properties); steps != nil {
+			specRun.Metadata = map[string]interface{}{"steps": steps}
+		} else if verbose && hasProperty(testCase.Properties, stepsProperty) {
+			log.Default().Printf("TestCase %s: %s is not a JSON list; steps dropped\n", testCase.Name, stepsProperty)
+		}
 		suiteRun.SpecRuns = append(suiteRun.SpecRuns, specRun)
 
 		startTime = endTime
@@ -218,4 +224,65 @@ func skipReason(s junit.Skip) string {
 		}
 	}
 	return r
+}
+
+// stepsProperty names the testcase property that carries the case's steps:
+// a JSON list of {title, kind, mode, start, duration_ms, status, error, depth,
+// detail}, written by the producer (olly's junit-stamp.py from test2json).
+const stepsProperty = "fern.steps"
+
+// Step limits per case, as Fern enforces them.
+const (
+	maxSteps     = 500
+	maxStepBytes = 64 * 1024
+)
+
+func hasProperty(props []junit.Property, name string) bool {
+	for _, p := range props {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// parseSteps reads the fern.steps property: nil when absent or not a JSON
+// list. Over the limits, the first steps are kept and a last one says how
+// many were cut.
+func parseSteps(props []junit.Property) []interface{} {
+	for _, p := range props {
+		if p.Name != stepsProperty {
+			continue
+		}
+		raw := p.Value
+		if strings.TrimSpace(raw) == "" {
+			raw = p.Content
+		}
+		var steps []interface{}
+		if err := json.Unmarshal([]byte(raw), &steps); err != nil || steps == nil {
+			return nil
+		}
+		kept := make([]interface{}, 0, len(steps))
+		size := 2
+		for _, s := range steps {
+			if len(kept) >= maxSteps-1 && len(steps) > maxSteps {
+				break
+			}
+			b, err := json.Marshal(s)
+			if err != nil {
+				continue
+			}
+			if size+len(b)+1 > maxStepBytes-200 {
+				break
+			}
+			size += len(b) + 1
+			kept = append(kept, s)
+		}
+		if n := len(steps) - len(kept); n > 0 {
+			kept = append(kept, map[string]interface{}{"title": fmt.Sprintf("%d more steps not shown", n), "kind": "log",
+				"mode": "technical", "depth": 0, "start": nil, "duration_ms": nil, "status": nil, "error": nil, "detail": nil})
+		}
+		return kept
+	}
+	return nil
 }
