@@ -24,10 +24,13 @@ type TestSuite struct {
 }
 
 type TestCase struct {
-	XMLName   xml.Name  `xml:"testcase"`
-	Name      string    `xml:"name,attr"`
-	ClassName string    `xml:"classname,attr"`
-	Time      string    `xml:"time,attr"`
+	XMLName   xml.Name `xml:"testcase"`
+	Name      string   `xml:"name,attr"`
+	ClassName string   `xml:"classname,attr"`
+	Time      string   `xml:"time,attr"`
+	// Timestamp is the case's own start (RFC3339), when the producer knows it.
+	// Not in every JUnit dialect; without it cases are laid end to end.
+	Timestamp string    `xml:"timestamp,attr"`
 	Failures  []Failure `xml:"failure"`
 	Errors    []Error   `xml:"error"`
 	Skips     []Skip    `xml:"skipped"`
@@ -49,4 +52,8 @@ type Error struct {
 
 type Skip struct {
 	XMLName xml.Name `xml:"skipped"`
+	// Message is why the case was skipped (go test / gotestsum put the
+	// t.Skip output here, e.g. "KNOWN GAP ENG-465 S08: ...").
+	Message string `xml:"message,attr"`
+	Content string `xml:",chardata"`
 }

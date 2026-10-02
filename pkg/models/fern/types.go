@@ -5,12 +5,17 @@ import (
 )
 
 type TestRun struct {
-	ID            uint64     `json:"id"`
-	TestProjectID string     `json:"test_project_id"`
-	TestSeed      uint64     `json:"test_seed"`
-	StartTime     time.Time  `json:"start_time"`
-	EndTime       time.Time  `json:"end_time"`
-	SuiteRuns     []SuiteRun `json:"suite_runs"`
+	ID            uint64            `json:"id"`
+	TestProjectID string            `json:"test_project_id"`
+	TestSeed      uint64            `json:"test_seed"`
+	StartTime     time.Time         `json:"start_time"`
+	EndTime       time.Time         `json:"end_time"`
+	GitBranch     string            `json:"git_branch,omitempty"`
+	GitSha        string            `json:"git_sha,omitempty"`
+	Environment   string            `json:"environment,omitempty"`
+	BuildUrl      string            `json:"build_url,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
+	SuiteRuns     []SuiteRun        `json:"suite_runs"`
 }
 
 type SuiteRun struct {
@@ -23,14 +28,17 @@ type SuiteRun struct {
 }
 
 type SpecRun struct {
-	ID              uint64    `json:"id"`
-	SuiteID         uint64    `json:"suite_id"`
-	SpecDescription string    `json:"spec_description"`
-	Status          string    `json:"status"`
-	Message         string    `json:"message"`
-	Tags            []Tag     `json:"tags"`
-	StartTime       time.Time `json:"start_time"`
-	EndTime         time.Time `json:"end_time"`
+	ID              uint64 `json:"id"`
+	SuiteID         uint64 `json:"suite_id"`
+	SpecDescription string `json:"spec_description"`
+	Status          string `json:"status"`
+	Message         string `json:"message"`
+	// Description is kept by Fern for every status (message only for
+	// failures), so a skip's reason travels here.
+	Description string    `json:"description,omitempty"`
+	Tags        []Tag     `json:"tags"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
 }
 
 type Tag struct {
