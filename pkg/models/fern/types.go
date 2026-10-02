@@ -28,14 +28,17 @@ type SuiteRun struct {
 }
 
 type SpecRun struct {
-	ID              uint64    `json:"id"`
-	SuiteID         uint64    `json:"suite_id"`
-	SpecDescription string    `json:"spec_description"`
-	Status          string    `json:"status"`
-	Message         string    `json:"message"`
-	Tags            []Tag     `json:"tags"`
-	StartTime       time.Time `json:"start_time"`
-	EndTime         time.Time `json:"end_time"`
+	ID              uint64 `json:"id"`
+	SuiteID         uint64 `json:"suite_id"`
+	SpecDescription string `json:"spec_description"`
+	Status          string `json:"status"`
+	Message         string `json:"message"`
+	// Description is kept by Fern for every status (message only for
+	// failures), so a skip's reason travels here.
+	Description string    `json:"description,omitempty"`
+	Tags        []Tag     `json:"tags"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
 }
 
 type Tag struct {

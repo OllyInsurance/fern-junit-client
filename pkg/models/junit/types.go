@@ -52,4 +52,8 @@ type Error struct {
 
 type Skip struct {
 	XMLName xml.Name `xml:"skipped"`
+	// Message is why the case was skipped (go test / gotestsum put the
+	// t.Skip output here, e.g. "KNOWN GAP ENG-465 S08: ...").
+	Message string `xml:"message,attr"`
+	Content string `xml:",chardata"`
 }

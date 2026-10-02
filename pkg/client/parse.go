@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/guidewire-oss/fern-junit-client/pkg/models/fern"
 	"github.com/guidewire-oss/fern-junit-client/pkg/models/junit"
@@ -129,6 +130,7 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 
 		status := ""
 		message := ""
+		description := ""
 		if len(testCase.Failures) > 0 {
 			status = "failed"
 			message = testCase.Failures[0].Message + "\n" + testCase.Failures[0].Content
@@ -137,6 +139,8 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 			message = testCase.Errors[0].Message + "\n" + testCase.Errors[0].Content
 		} else if len(testCase.Skips) > 0 {
 			status = "skipped"
+			message = skipReason(testCase.Skips[0])
+			description = message
 		} else {
 			status = "passed"
 		}
@@ -158,6 +162,7 @@ func parseTestSuite(testSuite junit.TestSuite, tags string, verbose bool) (suite
 			SpecDescription: testCase.Name,
 			Status:          status,
 			Message:         message,
+			Description:     description,
 			Tags:            convertToTags(tags),
 			StartTime:       startTime,
 			EndTime:         endTime,
@@ -191,4 +196,26 @@ func convertToTags(tagString string) (tags []fern.Tag) {
 		tags = append(tags, fern.Tag{Name: tag})
 	}
 	return
+}
+
+// maxSkipReason bounds the skip text sent per spec run.
+const maxSkipReason = 2000
+
+// skipReason is why a case was skipped: the message attribute and any body,
+// trimmed and joined, at most maxSkipReason bytes (cut on a rune boundary).
+func skipReason(s junit.Skip) string {
+	parts := []string{}
+	for _, p := range []string{strings.TrimSpace(s.Message), strings.TrimSpace(s.Content)} {
+		if p != "" && (len(parts) == 0 || parts[0] != p) {
+			parts = append(parts, p)
+		}
+	}
+	r := strings.Join(parts, "\n")
+	if len(r) > maxSkipReason {
+		r = r[:maxSkipReason]
+		for len(r) > 0 && !utf8.ValidString(r) {
+			r = r[:len(r)-1]
+		}
+	}
+	return r
 }

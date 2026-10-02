@@ -1,9 +1,12 @@
 package client
 
 import (
+	"encoding/xml"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/guidewire-oss/fern-junit-client/pkg/models/fern"
 	"github.com/guidewire-oss/fern-junit-client/pkg/models/junit"
@@ -338,5 +341,52 @@ func Test_parseTestSuite_TestCaseTimestamps(t *testing.T) {
 		if !s.StartTime.Equal(w.start) || !s.EndTime.Equal(w.end) {
 			t.Errorf("spec %d (%s): got %s..%s, want %s..%s", i, s.SpecDescription, s.StartTime, s.EndTime, w.start, w.end)
 		}
+	}
+}
+
+// A skip's reason (the t.Skip text gotestsum writes into <skipped message>)
+// reaches Fern as the spec run's description, which Fern keeps for every
+// status, so a "KNOWN GAP ..." skip can be told from a plain one.
+func Test_parseTestSuite_SkipReason(t *testing.T) {
+	xmlDoc := `<testsuite name="e2e" timestamp="2026-10-01T08:00:00Z" time="1">
+	  <testcase name="TestX/S08_no_handover" time="0.01"><skipped message="=== RUN   TestX/S08_no_handover&#xA;    x_test.go:41: KNOWN GAP ENG-465 S08: no handover route&#xA;--- SKIP: TestX/S08_no_handover (0.01s)"></skipped></testcase>
+	  <testcase name="TestX/S09" time="0.01"><skipped>body only</skipped></testcase>
+	  <testcase name="TestX/S10" time="0.01"><skipped/></testcase>
+	  <testcase name="TestX/S11" time="0.01"><failure message="boom">trace</failure></testcase>
+	</testsuite>`
+	var suite junit.TestSuite
+	if err := xml.Unmarshal([]byte(xmlDoc), &suite); err != nil {
+		t.Fatal(err)
+	}
+	got, err := parseTestSuite(suite, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := got.SpecRuns
+	if s[0].Status != "skipped" || !strings.Contains(s[0].Description, "KNOWN GAP ENG-465 S08: no handover route") || s[0].Message != s[0].Description {
+		t.Errorf("skip with message: %+v", s[0])
+	}
+	if s[1].Description != "body only" {
+		t.Errorf("skip with body: %q", s[1].Description)
+	}
+	if s[2].Status != "skipped" || s[2].Description != "" {
+		t.Errorf("bare skip: %+v", s[2])
+	}
+	if s[3].Status != "failed" || s[3].Message != "boom\ntrace" || s[3].Description != "" {
+		t.Errorf("failure: %+v", s[3])
+	}
+}
+
+func Test_skipReason(t *testing.T) {
+	if got := skipReason(junit.Skip{Message: " same ", Content: "same"}); got != "same" {
+		t.Errorf("duplicate body: %q", got)
+	}
+	if got := skipReason(junit.Skip{Message: "a", Content: "b"}); got != "a\nb" {
+		t.Errorf("message and body: %q", got)
+	}
+	long := strings.Repeat("é", maxSkipReason) // 2 bytes each
+	got := skipReason(junit.Skip{Message: long})
+	if len(got) > maxSkipReason || !utf8.ValidString(got) {
+		t.Errorf("long reason: %d bytes, valid %v", len(got), utf8.ValidString(got))
 	}
 }
