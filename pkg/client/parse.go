@@ -201,8 +201,14 @@ func convertToTags(tagString string) (tags []fern.Tag) {
 // maxSkipReason bounds the skip text sent per spec run.
 const maxSkipReason = 2000
 
+// skipCut marks where a long skip reason was cut between its head and tail.
+const skipCut = "\n[...]\n"
+
 // skipReason is why a case was skipped: the message attribute and any body,
-// trimmed and joined, at most maxSkipReason bytes (cut on a rune boundary).
+// trimmed and joined, at most maxSkipReason bytes. go test puts the test's
+// whole output in the message and the reason (t.Skip, a KNOWN GAP marker, a
+// STEP SKIP line) at its end, so a longer one keeps its head and its tail
+// around skipCut, each cut on a rune boundary.
 func skipReason(s junit.Skip) string {
 	parts := []string{}
 	for _, p := range []string{strings.TrimSpace(s.Message), strings.TrimSpace(s.Content)} {
@@ -211,11 +217,16 @@ func skipReason(s junit.Skip) string {
 		}
 	}
 	r := strings.Join(parts, "\n")
-	if len(r) > maxSkipReason {
-		r = r[:maxSkipReason]
-		for len(r) > 0 && !utf8.ValidString(r) {
-			r = r[:len(r)-1]
-		}
+	if len(r) <= maxSkipReason {
+		return r
 	}
-	return r
+	half := (maxSkipReason - len(skipCut)) / 2
+	head, tail := r[:half], r[len(r)-half:]
+	for len(head) > 0 && !utf8.ValidString(head) {
+		head = head[:len(head)-1]
+	}
+	for len(tail) > 0 && !utf8.ValidString(tail) {
+		tail = tail[1:]
+	}
+	return head + skipCut + tail
 }

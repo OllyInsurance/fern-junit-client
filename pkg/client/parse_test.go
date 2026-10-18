@@ -390,3 +390,25 @@ func Test_skipReason(t *testing.T) {
 		t.Errorf("long reason: %d bytes, valid %v", len(got), utf8.ValidString(got))
 	}
 }
+
+// A go test skip's message is the test's whole output: the reason (t.Skip,
+// "KNOWN GAP ...", the STEP SKIP line) is at its end. A long one keeps its
+// head and its tail, so the reason reaches Fern (olly rerun 2026-10-18: the
+// first 2000 bytes alone dropped the STEP SKIP line in 226 of 338 skips).
+func Test_skipReasonKeepsTail(t *testing.T) {
+	head := "=== RUN   TestA\n" + strings.Repeat("    a_test.go:1: TRACE x\n", 200)
+	tail := "    a_test.go:9: KNOWN GAP ENG-1 S01: not built\n    panic.go:615: STEP SKIP x: skipped (reason logged above)"
+	got := skipReason(junit.Skip{Message: head + tail})
+	if len(got) > maxSkipReason || !utf8.ValidString(got) {
+		t.Fatalf("long reason: %d bytes, valid %v", len(got), utf8.ValidString(got))
+	}
+	if !strings.HasPrefix(got, "=== RUN   TestA\n") {
+		t.Errorf("head lost: %q", got[:40])
+	}
+	if !strings.HasSuffix(got, tail) {
+		t.Errorf("tail lost: %q", got[len(got)-200:])
+	}
+	if !strings.Contains(got, skipCut) {
+		t.Errorf("no cut marker in %q", got)
+	}
+}
